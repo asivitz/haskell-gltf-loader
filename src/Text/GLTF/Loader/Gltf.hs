@@ -14,6 +14,7 @@ module Text.GLTF.Loader.Gltf
     MeshPrimitiveMode(..),
     Sampler(..),
     SamplerWrap(..),
+    Skin(..),
     Texture(..),
     TextureInfo(..),
     -- * Lenses
@@ -25,6 +26,7 @@ module Text.GLTF.Loader.Gltf
     _nodes,
     _samplers,
     _textures,
+    _skins,
     -- ** Asset Lenses
     _assetVersion,
     _assetCopyright,
@@ -53,6 +55,7 @@ module Text.GLTF.Loader.Gltf
     _nodeScale,
     _nodeTranslation,
     _nodeWeights,
+    _nodeSkinId,
     -- ** Sampler Lenses
     _samplerMagFilter,
     _samplerMinFilter,
@@ -69,6 +72,8 @@ module Text.GLTF.Loader.Gltf
     _meshPrimitiveMode,
     _meshPrimitiveNormals,
     _meshPrimitivePositions,
+    _meshPrimitiveJoints,
+    _meshPrimitiveWeights,
     -- ** PbrMetallicRoughness Lenses
     _pbrBaseColorFactor,
     _pbrBaseColorTexture,
@@ -90,7 +95,8 @@ data Gltf = Gltf
     gltfMeshes :: Vector Mesh,
     gltfNodes :: Vector Node,
     gltfSamplers :: Vector Sampler,
-    gltfTextures :: Vector Texture
+    gltfTextures :: Vector Texture,
+    gltfSkins :: Vector Skin
   } deriving (Eq, Show)
 
 -- | Metadata about the glTF asset
@@ -157,7 +163,9 @@ data Node = Node
     -- | The node's translation along the x, y, and z axes.
     nodeTranslation :: Maybe (V3 Float),
     -- | The weights of the instantiated morph target.
-    nodeWeights :: [Float]
+    nodeWeights :: [Float],
+    -- | The index of the skin in this node.
+    nodeSkinId :: Maybe Int
   } deriving (Eq, Show)
 
 -- | Texture sampler properties for filtering and wrapping modes.
@@ -197,7 +205,11 @@ data MeshPrimitive = MeshPrimitive
     -- | A Vector of vertex positions.
     meshPrimitivePositions :: Vector (V3 Float),
     -- | A Vector of vertex texture coordinates
-    meshPrimitiveTexCoords :: Vector (V2 Float)
+    meshPrimitiveTexCoords :: Vector (V2 Float),
+    -- | A Vector of vertex joint indices (for skinning).
+    meshPrimitiveJoints :: Vector (V4 Word8),
+    -- | A Vector of vertex joint weights (for skinning).
+    meshPrimitiveWeights :: Vector (V4 Float)
   } deriving (Eq, Show)
 
 -- | Alpha rendering mode of a material
@@ -266,6 +278,11 @@ data TextureInfo = TextureInfo
     textureTexCoord :: Int
   } deriving (Eq, Show)
 
+data Skin = Skin
+  { skinInverseBindMatrices :: Vector (M44 Float),
+    skinJoints :: Vector Int
+  } deriving (Eq, Show)
+
 -- | Metadata about the glTF asset
 _asset :: Lens' Gltf Asset
 _asset = lens gltfAsset (\gltf asset -> gltf { gltfAsset = asset })
@@ -294,6 +311,10 @@ _samplers = lens gltfSamplers (\gltf samplers -> gltf { gltfSamplers = samplers 
 -- | A texture and its sampler.
 _textures :: Lens' Gltf (Vector Texture)
 _textures = lens gltfTextures (\gltf texs -> gltf { gltfTextures = texs })
+
+-- | A Vector of Skins. Skins define how a mesh may be manipulated by joint nodes.
+_skins :: Lens' Gltf (Vector Skin)
+_skins = lens gltfSkins (\gltf skins -> gltf { gltfSkins = skins })
 
 -- | The glTF version that this asset targets.
 _assetVersion :: Lens' Asset Text
@@ -410,6 +431,10 @@ _nodeTranslation = lens
 _nodeWeights :: Lens' Node [Float]
 _nodeWeights = lens nodeWeights (\node weights' -> node { nodeWeights = weights' })
 
+-- | The index of the skin in this node.
+_nodeSkinId :: Lens' Node (Maybe Int)
+_nodeSkinId = lens nodeSkinId (\node skinId -> node { nodeSkinId = skinId })
+
 -- | Magnification filter.
 _samplerMagFilter :: Lens' Sampler (Maybe MagFilter)
 _samplerMagFilter = lens
@@ -491,6 +516,18 @@ _meshPrimitiveTexCoords :: Lens' MeshPrimitive (Vector (V2 Float))
 _meshPrimitiveTexCoords = lens
   meshPrimitiveTexCoords
   (\primitive' coords -> primitive' { meshPrimitiveTexCoords = coords })
+
+-- | A Vector of vertex joint indices.
+_meshPrimitiveJoints :: Lens' MeshPrimitive (Vector (V4 Word8))
+_meshPrimitiveJoints = lens
+  meshPrimitiveJoints
+  (\primitive' joints -> primitive' { meshPrimitiveJoints = joints })
+
+-- | A Vector of vertex joint weights.
+_meshPrimitiveWeights :: Lens' MeshPrimitive (Vector (V4 Float))
+_meshPrimitiveWeights = lens
+  meshPrimitiveWeights
+  (\primitive' weights -> primitive' { meshPrimitiveWeights = weights })
 
 -- | The factors for the base color of the material.
 _pbrBaseColorFactor :: Lens' PbrMetallicRoughness (V4 Float)

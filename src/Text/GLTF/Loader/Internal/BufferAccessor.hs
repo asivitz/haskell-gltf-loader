@@ -9,6 +9,9 @@ module Text.GLTF.Loader.Internal.BufferAccessor
     vertexPositions,
     vertexNormals,
     vertexTexCoords,
+    vertexJoints,
+    vertexWeights,
+    decodeSkinInverseBindMatrices,
     imageDataRaw,
   ) where
 
@@ -95,6 +98,18 @@ vertexNormals = readBufferWithGet getNormals
 -- | Decode texture coordinates. Note that we only use the first one.
 vertexTexCoords :: GlTF -> Vector GltfBuffer -> AccessorIx -> Vector (V2 Float)
 vertexTexCoords = readBufferWithGet getTexCoords
+
+-- | Decode joints
+vertexJoints :: GlTF -> Vector GltfBuffer -> AccessorIx -> Vector (V4 Word8)
+vertexJoints = readBufferWithGet getJoints
+
+-- | Decode weights
+vertexWeights :: GlTF -> Vector GltfBuffer -> AccessorIx -> Vector (V4 Float)
+vertexWeights = readBufferWithGet getWeights
+
+-- | Decode inverse bind matrices
+decodeSkinInverseBindMatrices :: GlTF -> Vector GltfBuffer -> AccessorIx -> Vector (M44 Float)
+decodeSkinInverseBindMatrices = readBufferWithGet (getMat4 getFloat)
 
 -- | Read an image from a buffer view
 imageDataRaw :: GlTF -> Vector GltfBuffer -> BufferViewIx -> Maybe ByteString

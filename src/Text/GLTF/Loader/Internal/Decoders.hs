@@ -4,6 +4,8 @@ module Text.GLTF.Loader.Internal.Decoders
     getPositions,
     getNormals,
     getTexCoords,
+    getJoints,
+    getWeights,
     -- * GLTF Accessor Type decoders
     getScalar,
     getVec2,
@@ -41,6 +43,14 @@ getNormals = getVec3 getFloat
 -- | Texture coordinates binary decoder
 getTexCoords :: Get (Vector (V2 Float))
 getTexCoords = getVec2 getFloat
+
+-- | Joints binary decoder
+getJoints :: Get (Vector (V4 Word8))
+getJoints = getVec4 getUnsignedByte
+
+-- | Weights binary decoder
+getWeights :: Get (Vector (V4 Float))
+getWeights = getVec4 getFloat
 
 -- | Scalar (simple) type binary decoder
 getScalar :: Get a -> Get (Vector a)

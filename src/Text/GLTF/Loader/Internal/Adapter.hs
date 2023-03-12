@@ -41,6 +41,7 @@ import qualified Codec.GlTF.Node as Node
 import qualified Codec.GlTF.Sampler as Sampler
 import qualified Codec.GlTF.Texture as Texture
 import qualified Codec.GlTF.TextureInfo as TextureInfo
+import qualified Codec.GlTF.Skin as Skin
 import qualified Data.HashMap.Strict as HashMap
 import qualified RIO.Vector as V
 
@@ -52,6 +53,12 @@ attributeNormal = "NORMAL"
 
 attributeTexCoord :: Text
 attributeTexCoord = "TEXCOORD_0"
+
+attributeJoints :: Text
+attributeJoints = "JOINTS_0"
+
+attributeWeights :: Text
+attributeWeights = "WEIGHTS_0"
 
 runAdapter
   :: GlTF.GlTF
@@ -67,7 +74,8 @@ adaptGltf = do
 
   gltfImages <- adaptImages images
   gltfMeshes <- adaptMeshes meshes
-  
+  gltfSkins  <- adaptSkins skins
+
   return $ Gltf
     { gltfAsset = adaptAsset asset,
       gltfImages = gltfImages,
@@ -75,7 +83,8 @@ adaptGltf = do
       gltfMeshes = gltfMeshes,
       gltfNodes = adaptNodes nodes,
       gltfSamplers = adaptSamplers samplers,
-      gltfTextures = adaptTextures textures
+      gltfTextures = adaptTextures textures,
+      gltfSkins = gltfSkins
     }
 
 adaptAsset :: Asset.Asset -> Asset
@@ -110,6 +119,9 @@ adaptSamplers = maybe mempty (fmap adaptSampler)
 
 adaptTextures :: Maybe (Vector Texture.Texture) -> Vector Texture
 adaptTextures = maybe mempty (fmap adaptTexture)
+
+adaptSkins :: Maybe (Vector Skin.Skin) -> Adapter (Vector Skin)
+adaptSkins = maybe (return mempty) (V.mapM adaptSkin)
 
 adaptImage :: GltfImageData -> Image.Image -> Adapter Image
 adaptImage imgData Image.Image{..} = do
@@ -154,7 +166,8 @@ adaptNode Node.Node{..} = Node
     nodeRotation = toV4 <$> rotation,
     nodeScale = toV3 <$> scale,
     nodeTranslation = toV3 <$> translation,
-    nodeWeights = maybe [] toList weights
+    nodeWeights = maybe [] toList weights,
+    nodeSkinId = Skin.unSkinIx <$> skin
   }
 
 adaptSampler :: Sampler.Sampler -> Sampler
@@ -172,6 +185,16 @@ adaptTexture Texture.Texture{..} = Texture
     textureSamplerId = Sampler.unSamplerIx <$> sampler,
     textureSourceId = Image.unImageIx <$> source
   }
+
+adaptSkin :: Skin.Skin -> Adapter Skin
+adaptSkin Skin.Skin{..} = do
+  gltf <- getGltf
+  buffers' <- getBuffers
+
+  return $ Skin
+    { skinInverseBindMatrices = maybe mempty (decodeSkinInverseBindMatrices gltf buffers') inverseBindMatrices,
+      skinJoints = Node.unNodeIx <$> joints
+    }
 
 getImageData :: GltfImageData -> Adapter (Maybe ByteString)
 getImageData (ImageData payload) = return $ Just payload
@@ -230,19 +253,23 @@ adaptMeshPrimitive :: Mesh.MeshPrimitive -> Adapter MeshPrimitive
 adaptMeshPrimitive Mesh.MeshPrimitive{..} = do
   gltf <- getGltf
   buffers' <- getBuffers
-  
+
   return $ MeshPrimitive
     { meshPrimitiveIndices = maybe mempty (vertexIndices gltf buffers') indices,
       meshPrimitiveMaterial = Material.unMaterialIx <$> material,
       meshPrimitiveMode = adaptMeshPrimitiveMode mode,
       meshPrimitiveNormals = maybe mempty (vertexNormals gltf buffers') normals,
       meshPrimitivePositions = maybe mempty (vertexPositions gltf buffers') positions,
-      meshPrimitiveTexCoords = maybe mempty (vertexTexCoords gltf buffers') texCoords
+      meshPrimitiveTexCoords = maybe mempty (vertexTexCoords gltf buffers') texCoords,
+      meshPrimitiveJoints = maybe mempty (vertexJoints gltf buffers') joints,
+      meshPrimitiveWeights = maybe mempty (vertexWeights gltf buffers') weights
     }
     where positions = attributes HashMap.!? attributePosition
           normals = attributes HashMap.!? attributeNormal
           texCoords = attributes HashMap.!? attributeTexCoord
-          
+          joints = attributes HashMap.!? attributeJoints
+          weights = attributes HashMap.!? attributeWeights
+
 
 adaptMeshPrimitiveMode :: Mesh.MeshPrimitiveMode -> MeshPrimitiveMode
 adaptMeshPrimitiveMode = toEnum . Mesh.unMeshPrimitiveMode
