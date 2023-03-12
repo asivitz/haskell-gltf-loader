@@ -71,6 +71,7 @@ module Text.GLTF.Loader.Gltf
     _meshPrimitiveIndices,
     _meshPrimitiveMode,
     _meshPrimitiveNormals,
+    _meshPrimitiveTexCoords,
     _meshPrimitivePositions,
     _meshPrimitiveJoints,
     _meshPrimitiveWeights,

@@ -71,6 +71,8 @@ reportNodes gltf meshReporter = do
 
   forM_ nodes $ \node -> do
     logInfo $ "  Name: " <> maybe "Unknown node" display (view _nodeName node)
+    forM_ (node ^. _nodeSkinId) $ \skinId -> do
+      logInfo $ "  SkinId: " <> display skinId
 
     forM_ (node ^. _nodeMeshId) $ \meshId -> do
       logInfo "  Mesh: "
@@ -121,22 +123,41 @@ reportMeshSummary mesh = do
 
   let primitives' = mesh ^. _meshPrimitives
       vertices = Vector.concatMap (^. _meshPrimitivePositions) primitives'
+      normals = has (each . _meshPrimitiveNormals) primitives'
+      texCoords = has (each . _meshPrimitiveTexCoords) primitives'
+      joints = has (each . _meshPrimitiveJoints) primitives'
+      weights = has (each . _meshPrimitiveWeights) primitives'
       indices = Vector.concatMap (^. _meshPrimitiveIndices) primitives'
+      attrs :: [Text] = catMaybes
+        [ Just "Positions"
+        , if normals then Just "Normals" else Nothing
+        , if texCoords then Just "TexCoords" else Nothing
+        , if joints then Just "Joints" else Nothing
+        , if weights then Just "Weights" else Nothing
+        ]
 
   logInfo $ "    Unique Vertices: " <> display (length vertices)
   logInfo $ "    Total Vertices: " <> display (length indices)
+  logInfo $ "    Attributes: " <> displayInlineList attrs
 
 reportMaterial :: Material -> RIO App ()
 reportMaterial material = do
   logInfo "      Material:"
   logInfo $ "        Name: " <>
     material ^. _materialName . to (display . fromMaybe "Unknown")
-  
+
   forM_ (material ^. _materialPbrMetallicRoughness) $ \pbr -> do
     logInfo $ "        Base Color Factor: " <> pbr ^. _pbrBaseColorFactor . to displayV4
     logInfo $ "        Metallic Factor: " <> pbr ^. _pbrMetallicFactor . to display
     logInfo $ "        Roughness Factor: " <> pbr ^. _pbrRoughnessFactor . to display
-  
+
+displayInlineList :: Display a => [a] -> Utf8Builder
+displayInlineList ls = "[" <> go ls <> "]"
+  where
+  go [x] = display x
+  go (x:xs) = display x <> ", " <> go xs
+  go [] = ""
+
 displayV3 :: Display a => V3 a -> Utf8Builder
 displayV3 (V3 x y z)
   = "("
