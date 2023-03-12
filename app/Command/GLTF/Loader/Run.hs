@@ -72,10 +72,14 @@ reportNodes gltf meshReporter = do
   forM_ nodes $ \node -> do
     logInfo $ "  Name: " <> maybe "Unknown node" display (view _nodeName node)
     forM_ (node ^. _nodeSkinId) $ \skinId -> do
-      logInfo $ "  SkinId: " <> display skinId
+      logInfo $ "    SkinId: " <> display skinId
+
+    case node ^. _nodeChildren of
+      [] -> return ()
+      childIds -> logInfo $ "    Children: " <> displayInlineList (toList childIds)
 
     forM_ (node ^. _nodeMeshId) $ \meshId -> do
-      logInfo "  Mesh: "
+      logInfo "    Mesh: "
       forM_ (gltf ^. _meshes ^? ix meshId) meshReporter
 
 reportMeshVerbose :: Gltf -> Mesh -> RIO App ()
@@ -101,17 +105,17 @@ reportMeshVerbose gltf mesh = do
     -- Report material
     forM_ (primitive' ^. _meshPrimitiveMaterial) $ \materialId -> do
       forM_ (gltf ^. _materials . to (Vector.!? materialId)) reportMaterial
-    
+
 reportMesh :: Gltf -> Mesh -> RIO App ()
 reportMesh gltf mesh = do
-  logInfo $ "    Name: " <> mesh ^. _meshName . to (display . fromMaybe "Unknown")
-  logInfo "    Mesh Primitives:"
+  logInfo $ "      Name: " <> mesh ^. _meshName . to (display . fromMaybe "Unknown")
+  logInfo "      Mesh Primitives:"
 
   forM_ (mesh ^. _meshPrimitives) $ \primitive' -> do
-    logInfo "      Vertex Positions:"
+    logInfo "        Vertex Positions:"
 
     forM_ (Vector.uniq $ primitive' ^. _meshPrimitivePositions) $ \position -> do
-      logInfo $ "        " <> displayV3 position
+      logInfo $ "          " <> displayV3 position
 
     -- Report material
     forM_ (primitive' ^. _meshPrimitiveMaterial) $ \materialId -> do
@@ -119,7 +123,7 @@ reportMesh gltf mesh = do
 
 reportMeshSummary :: Mesh -> RIO App ()
 reportMeshSummary mesh = do
-  logInfo $ "    Name: " <> mesh ^. _meshName . to (display . fromMaybe "Unknown")
+  logInfo $ "      Name: " <> mesh ^. _meshName . to (display . fromMaybe "Unknown")
 
   let primitives' = mesh ^. _meshPrimitives
       vertices = Vector.concatMap (^. _meshPrimitivePositions) primitives'
@@ -136,9 +140,9 @@ reportMeshSummary mesh = do
         , if weights then Just "Weights" else Nothing
         ]
 
-  logInfo $ "    Unique Vertices: " <> display (length vertices)
-  logInfo $ "    Total Vertices: " <> display (length indices)
-  logInfo $ "    Attributes: " <> displayInlineList attrs
+  logInfo $ "      Unique Vertices: " <> display (length vertices)
+  logInfo $ "      Total Vertices: " <> display (length indices)
+  logInfo $ "      Attributes: " <> displayInlineList attrs
 
 reportMaterial :: Material -> RIO App ()
 reportMaterial material = do
