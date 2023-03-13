@@ -14,6 +14,7 @@ module Text.GLTF.Loader.Internal.Decoders
     getMat2,
     getMat3,
     getMat4,
+    getVector,
     -- * GLTF Component Type decoders
     getByte,
     getUnsignedByte,

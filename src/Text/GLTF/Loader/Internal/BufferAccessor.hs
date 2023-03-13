@@ -12,6 +12,10 @@ module Text.GLTF.Loader.Internal.BufferAccessor
     vertexJoints,
     vertexWeights,
     decodeSkinInverseBindMatrices,
+    decodeSamplerInput,
+    decodeSamplerTranslations,
+    decodeSamplerRotations,
+    decodeSamplerScales,
     imageDataRaw,
   ) where
 
@@ -110,6 +114,22 @@ vertexWeights = readBufferWithGet getWeights
 -- | Decode inverse bind matrices
 decodeSkinInverseBindMatrices :: GlTF -> Vector GltfBuffer -> AccessorIx -> Vector (M44 Float)
 decodeSkinInverseBindMatrices = readBufferWithGet (getMat4 getFloat)
+
+-- | Decode sampler input
+decodeSamplerInput :: GlTF -> Vector GltfBuffer -> AccessorIx -> Vector Float
+decodeSamplerInput = readBufferWithGet (getVector getFloat)
+
+-- | Decode translations
+decodeSamplerTranslations :: GlTF -> Vector GltfBuffer -> AccessorIx -> Vector (V3 Float)
+decodeSamplerTranslations = readBufferWithGet (getVec3 getFloat)
+
+-- | Decode rotations
+decodeSamplerRotations :: GlTF -> Vector GltfBuffer -> AccessorIx -> Vector (V4 Float)
+decodeSamplerRotations = readBufferWithGet (getVec4 getFloat)
+
+-- | Decode rotations
+decodeSamplerScales :: GlTF -> Vector GltfBuffer -> AccessorIx -> Vector (V3 Float)
+decodeSamplerScales = readBufferWithGet (getVec3 getFloat)
 
 -- | Read an image from a buffer view
 imageDataRaw :: GlTF -> Vector GltfBuffer -> BufferViewIx -> Maybe ByteString

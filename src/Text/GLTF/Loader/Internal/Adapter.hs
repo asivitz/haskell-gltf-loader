@@ -42,6 +42,7 @@ import qualified Codec.GlTF.Sampler as Sampler
 import qualified Codec.GlTF.Texture as Texture
 import qualified Codec.GlTF.TextureInfo as TextureInfo
 import qualified Codec.GlTF.Skin as Skin
+import qualified Codec.GlTF.Animation as Animation
 import qualified Data.HashMap.Strict as HashMap
 import qualified RIO.Vector as V
 
@@ -75,6 +76,7 @@ adaptGltf = do
   gltfImages <- adaptImages images
   gltfMeshes <- adaptMeshes meshes
   gltfSkins  <- adaptSkins skins
+  gltfAnimations  <- adaptAnimations animations
 
   return $ Gltf
     { gltfAsset = adaptAsset asset,
@@ -84,7 +86,8 @@ adaptGltf = do
       gltfNodes = adaptNodes nodes,
       gltfSamplers = adaptSamplers samplers,
       gltfTextures = adaptTextures textures,
-      gltfSkins = gltfSkins
+      gltfSkins = gltfSkins,
+      gltfAnimations = gltfAnimations
     }
 
 adaptAsset :: Asset.Asset -> Asset
@@ -122,6 +125,9 @@ adaptTextures = maybe mempty (fmap adaptTexture)
 
 adaptSkins :: Maybe (Vector Skin.Skin) -> Adapter (Vector Skin)
 adaptSkins = maybe (return mempty) (V.mapM adaptSkin)
+
+adaptAnimations :: Maybe (Vector Animation.Animation) -> Adapter (Vector Animation)
+adaptAnimations = maybe (return mempty) (V.mapM adaptAnimation)
 
 adaptImage :: GltfImageData -> Image.Image -> Adapter Image
 adaptImage imgData Image.Image{..} = do
@@ -194,6 +200,36 @@ adaptSkin Skin.Skin{..} = do
   return $ Skin
     { skinInverseBindMatrices = maybe mempty (decodeSkinInverseBindMatrices gltf buffers') inverseBindMatrices,
       skinJoints = Node.unNodeIx <$> joints
+    }
+
+adaptAnimation :: Animation.Animation -> Adapter Animation
+adaptAnimation Animation.Animation{..} = do
+  gltf <- getGltf
+  buffers' <- getBuffers
+
+  return $ Animation
+    { animationName = name,
+      animationChannels = V.mapMaybe (adaptAnimationChannel gltf buffers' samplers) channels
+    }
+
+adaptAnimationChannel :: GlTF.GlTF -> Vector GltfBuffer -> Vector Animation.AnimationSampler -> Animation.AnimationChannel -> Maybe Channel
+adaptAnimationChannel gltf buffers samplers Animation.AnimationChannel {..} = do
+  let Animation.AnimationChannelTarget { node, path } = target
+
+  Animation.AnimationSampler { input, output, interpolation } <- samplers V.!? Animation.unAnimationSamplerIx sampler
+  node' <- node
+
+  output' <- case Animation.unAnimationChannelTargetPath path of
+    "translation" -> Just $ TranslationOutput (decodeSamplerTranslations gltf buffers output)
+    "rotation" -> Just $ RotationOutput (decodeSamplerRotations gltf buffers output)
+    "scale" -> Just $ ScaleOutput (decodeSamplerScales gltf buffers output)
+    _ -> Nothing
+
+  return $ Channel
+    { channelTargetNode = Node.unNodeIx node'
+    , channelInterpolation = Animation.unAnimationSamplerInterpolation interpolation
+    , channelInput = decodeSamplerInput gltf buffers input
+    , channelOutput = output'
     }
 
 getImageData :: GltfImageData -> Adapter (Maybe ByteString)

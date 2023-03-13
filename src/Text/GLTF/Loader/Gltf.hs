@@ -1,17 +1,20 @@
 module Text.GLTF.Loader.Gltf
   ( -- * Data constructors
     Gltf(..),
+    Animation(..),
+    AnimationOutput(..),
     Asset(..),
+    Channel(..),
     Image(..),
     MagFilter(..),
-    MinFilter(..),
     Material(..),
     MaterialAlphaMode(..),
     Mesh(..),
-    Node(..),
     MeshPrimitive(..),
-    PbrMetallicRoughness(..),
     MeshPrimitiveMode(..),
+    MinFilter(..),
+    Node(..),
+    PbrMetallicRoughness(..),
     Sampler(..),
     SamplerWrap(..),
     Skin(..),
@@ -27,6 +30,7 @@ module Text.GLTF.Loader.Gltf
     _samplers,
     _textures,
     _skins,
+    _animations,
     -- ** Asset Lenses
     _assetVersion,
     _assetCopyright,
@@ -82,7 +86,9 @@ module Text.GLTF.Loader.Gltf
     _pbrRoughnessFactor,
     -- ** TextureInfo Lenses
     _textureInfoId,
-    _textureInfoTexCoord
+    _textureInfoTexCoord,
+    -- ** Animation Lenses
+    _animationChannels
   ) where
 
 import Linear
@@ -97,7 +103,8 @@ data Gltf = Gltf
     gltfNodes :: Vector Node,
     gltfSamplers :: Vector Sampler,
     gltfTextures :: Vector Texture,
-    gltfSkins :: Vector Skin
+    gltfSkins :: Vector Skin,
+    gltfAnimations :: Vector Animation
   } deriving (Eq, Show)
 
 -- | Metadata about the glTF asset
@@ -284,6 +291,24 @@ data Skin = Skin
     skinJoints :: Vector Int
   } deriving (Eq, Show)
 
+data Animation = Animation
+  { animationName :: Maybe Text,
+    animationChannels :: Vector Channel
+  } deriving (Eq, Show)
+
+data Channel = Channel
+  { channelTargetNode :: Int,
+    channelInterpolation :: Text,
+    channelInput :: Vector Float,
+    channelOutput :: AnimationOutput
+  } deriving (Eq, Show)
+
+data AnimationOutput
+  = TranslationOutput (Vector (V3 Float))
+  | RotationOutput (Vector (V4 Float))
+  | ScaleOutput (Vector (V3 Float))
+  deriving (Eq, Show)
+
 -- | Metadata about the glTF asset
 _asset :: Lens' Gltf Asset
 _asset = lens gltfAsset (\gltf asset -> gltf { gltfAsset = asset })
@@ -316,6 +341,10 @@ _textures = lens gltfTextures (\gltf texs -> gltf { gltfTextures = texs })
 -- | A Vector of Skins. Skins define how a mesh may be manipulated by joint nodes.
 _skins :: Lens' Gltf (Vector Skin)
 _skins = lens gltfSkins (\gltf skins -> gltf { gltfSkins = skins })
+
+-- | A Vector of Skins. Skins define how a mesh may be manipulated by joint nodes.
+_animations :: Lens' Gltf (Vector Animation)
+_animations = lens gltfAnimations (\gltf animations -> gltf { gltfAnimations = animations })
 
 -- | The glTF version that this asset targets.
 _assetVersion :: Lens' Asset Text
@@ -567,3 +596,8 @@ _textureInfoTexCoord :: Lens' TextureInfo Int
 _textureInfoTexCoord = lens
   textureTexCoord
   (\texInfo coord -> texInfo { textureTexCoord = coord })
+
+_animationChannels :: Lens' Animation (Vector Channel)
+_animationChannels = lens
+  animationChannels
+  (\animation channels -> animation { animationChannels = channels })
