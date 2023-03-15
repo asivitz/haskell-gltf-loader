@@ -27,7 +27,7 @@ import Text.GLTF.Loader.Gltf
 import Text.GLTF.Loader.Internal.BufferAccessor
 import Text.GLTF.Loader.Internal.MonadAdapter
 
-import Linear (V3(..), V4(..))
+import Linear (V3(..), V4(..), Quaternion (..))
 import RIO
 import RIO.Partial (toEnum)
 import RIO.Vector.Partial ((!))
@@ -221,7 +221,7 @@ adaptAnimationChannel gltf buffers samplers Animation.AnimationChannel {..} = do
 
   output' <- case Animation.unAnimationChannelTargetPath path of
     "translation" -> Just $ TranslationOutput (decodeSamplerTranslations gltf buffers output)
-    "rotation" -> Just $ RotationOutput (decodeSamplerRotations gltf buffers output)
+    "rotation" -> Just $ RotationOutput (V.map (\(V4 x y z w) -> Quaternion w (V3 x y z)) $ decodeSamplerRotations gltf buffers output)
     "scale" -> Just $ ScaleOutput (decodeSamplerScales gltf buffers output)
     _ -> Nothing
 

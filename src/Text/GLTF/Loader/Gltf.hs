@@ -287,8 +287,10 @@ data TextureInfo = TextureInfo
   } deriving (Eq, Show)
 
 data Skin = Skin
-  { skinInverseBindMatrices :: Vector (M44 Float),
-    skinJoints :: Vector Int
+  { -- | Node indices representing transformations of the model's bones
+    skinJoints :: Vector Int,
+    -- | Each matrix transforms the mesh into the local space of that joint
+    skinInverseBindMatrices :: Vector (M44 Float)
   } deriving (Eq, Show)
 
 data Animation = Animation
@@ -305,7 +307,7 @@ data Channel = Channel
 
 data AnimationOutput
   = TranslationOutput (Vector (V3 Float))
-  | RotationOutput (Vector (V4 Float))
+  | RotationOutput (Vector (Quaternion Float))
   | ScaleOutput (Vector (V3 Float))
   deriving (Eq, Show)
 

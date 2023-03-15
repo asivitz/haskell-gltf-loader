@@ -5,6 +5,9 @@ module Text.GLTF.Loader
     fromBinaryFile,
     fromBinaryByteString,
 
+    allNamedAnimationJointMatrices,
+    animationJointMatrices,
+
     -- * GLTF Data Types
     module Text.GLTF.Loader.Gltf,
     module Text.GLTF.Loader.Glb,
@@ -25,9 +28,11 @@ import Data.Maybe (fromJust)
 import Lens.Micro
 import RIO
 import RIO.FilePath (takeDirectory)
+import qualified RIO.Map as Map
 import qualified Codec.GlTF as GlTF
 import qualified Codec.GLB as GLB
 import qualified RIO.Vector as Vector
+import Linear (M44, (!*!), identity, V3(..), V4 (..), Quaternion (..), scaled, fromQuaternion, translation, _m33, lerp, slerp)
 
 -- | Load a glTF scene from a ByteString
 fromJsonByteString :: MonadUnliftIO io => ByteString -> io (Either Errors Gltf)
@@ -77,3 +82,85 @@ processGlb basePath GLB.GLB{..} = over _Right Glb <$> res
         bufferChunk = chunks Vector.!? 1
         gltf = GlTF.fromChunk (fromJust gltfChunk)
         res = toGltfResult basePath bufferChunk gltf
+
+data NodeTransform = NodeTransform
+  { nodeTranslation :: Maybe (V3 Float)
+  , nodeRotation :: Maybe (Quaternion Float)
+  , nodeScale :: Maybe (V3 Float)
+  }
+
+nodeTransformMatrix ::  NodeTransform -> M44 Float
+nodeTransformMatrix NodeTransform {..} =
+  tMat !*! rMat !*! sMat
+  where
+  tMat = maybe identity (\t' -> identity & translation .~ t') nodeTranslation
+  rMat = extendm33 $ maybe identity fromQuaternion nodeRotation
+  sMat = extendm33 $ maybe identity scaled nodeScale
+  extendm33 m = identity & _m33 .~ m
+
+prioritizeNodeTransform :: NodeTransform -> NodeTransform -> NodeTransform
+prioritizeNodeTransform (NodeTransform t1 r1 s1) (NodeTransform t2 r2 s2) =
+  NodeTransform (t1 <|> t2) (r1 <|> r2) (s1 <|> s2)
+
+
+allNamedAnimationJointMatrices :: Gltf -> Int -> Float -> Map.Map Text (Vector (Vector (M44 Float)))
+allNamedAnimationJointMatrices gltf skinId frameTime = Map.fromList . Vector.toList
+  $ Vector.mapMaybe (\a@Animation {..} -> (,) <$> animationName <*> animationJointMatrices gltf skinId frameTime a) (gltf ^. _animations)
+
+-- | For a given node, animation name, and frame duration (e.g. 1/30), give
+-- the joint matrices for the animation. For every frame of animation, we give
+-- back a vector of joint matrices (one for each joint).
+animationJointMatrices :: Gltf -> Int -> Float -> Animation -> Maybe (Vector (Vector (M44 Float)))
+animationJointMatrices Gltf {..} skinId frameTime Animation {..} = do
+  let animationLength = Vector.foldl' max 0 . Vector.map (Vector.foldl' max 0 . channelInput) $ animationChannels
+      frames :: Int = floor (animationLength / frameTime)
+
+  Skin {..} <- gltfSkins Vector.!? skinId
+
+  for [0..frames] $ \frameNumber -> do
+    let animatedTargets = Map.fromListWith prioritizeNodeTransform . Vector.toList $ (\channel -> (channelTargetNode channel, resolveChannel (frameTime * realToFrac frameNumber) channel)) <$> animationChannels
+    Vector.mapM (jointMatrixForJoint animatedTargets) (Vector.zip skinJoints skinInverseBindMatrices)
+
+  where
+  resolveChannel :: Float -> Channel -> NodeTransform
+  resolveChannel currentTime Channel {..} = case channelOutput of
+    TranslationOutput v -> NodeTransform (interp (\a b x -> lerp x a b) v) Nothing Nothing
+    RotationOutput v -> NodeTransform Nothing (interp slerp v) Nothing
+    ScaleOutput v -> NodeTransform Nothing Nothing (interp (\a b x -> lerp x a b) v)
+    where
+    toIdx = Vector.findIndex (> currentTime) channelInput
+    fromIdx = maybe (Just $ Vector.length channelInput) (\x -> if x > 0 then Just (x - 1) else Nothing) toIdx
+    interp :: (a -> a -> Float -> a) -> Vector a -> Maybe a
+    interp f v = case (fromIdx, toIdx) of
+      (Just i, Nothing) -> v Vector.!? i
+      (Nothing, Just i) -> v Vector.!? i
+      (Just i, Just j) -> do
+        t1 <- channelInput Vector.!? i
+        t2 <- channelInput Vector.!? j
+        v1 <- v Vector.!? i
+        v2 <- v Vector.!? j
+        return $ f v1 v2 ((currentTime - t1) / (t2 - t1))
+      (Nothing, Nothing) -> Nothing
+
+  globalTransformForNode :: Map.Map Int NodeTransform -> Int -> Maybe (M44 Float)
+  globalTransformForNode animatedTargets i = do
+    let parentXForm = fromMaybe identity $ do
+          par <- Map.lookup i parentMap
+          globalTransformForNode animatedTargets par
+    Node {..} <- gltfNodes Vector.!? i
+    let defaultNodeTransform = NodeTransform nodeTranslation (v4toQuat <$> nodeRotation) nodeScale
+        emptyNodeTransform = NodeTransform Nothing Nothing Nothing
+        nodeTransform = prioritizeNodeTransform (fromMaybe emptyNodeTransform (Map.lookup i animatedTargets)) defaultNodeTransform
+        v4toQuat (V4 x y z w) = Quaternion w (V3 x y z)
+    return $ parentXForm !*! nodeTransformMatrix nodeTransform
+
+  parentMap :: Map.Map Int Int
+  parentMap = Map.fromList
+            . Vector.toList
+            . Vector.mapMaybe (\(i,_) -> (i,) <$> Vector.findIndex (\node -> i `Vector.elem` nodeChildren node) gltfNodes)
+            $ Vector.indexed gltfNodes
+
+  jointMatrixForJoint :: Map.Map Int NodeTransform -> (Int, M44 Float) -> Maybe (M44 Float)
+  jointMatrixForJoint animatedTargets (j, invBindMat) = do
+    globalXForm <- globalTransformForNode animatedTargets j
+    return $ globalXForm !*! invBindMat
