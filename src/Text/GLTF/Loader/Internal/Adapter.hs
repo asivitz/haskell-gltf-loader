@@ -45,6 +45,8 @@ import qualified Codec.GlTF.Skin as Skin
 import qualified Codec.GlTF.Animation as Animation
 import qualified Data.HashMap.Strict as HashMap
 import qualified RIO.Vector as V
+import Codec.GlTF.Accessor (AccessorIx)
+import Lens.Micro.Aeson (key, values, _String)
 
 attributePosition :: Text
 attributePosition = "POSITION"
@@ -157,11 +159,12 @@ adaptMaterial Material.Material{..} = Material
 adaptMesh :: Mesh.Mesh -> Adapter Mesh
 adaptMesh Mesh.Mesh{..} = do
   primitives' <- adaptMeshPrimitives primitives
-  
+
   return $ Mesh
     { meshPrimitives = primitives',
       meshWeights = fromMaybe mempty weights,
-      meshName = name
+      meshName = name,
+      meshTargetNames = V.fromList $ extras ^.. traverse . key "targetNames" . values . _String
     }
 
 adaptNode :: Node.Node -> Node
@@ -289,6 +292,7 @@ adaptMeshPrimitive :: Mesh.MeshPrimitive -> Adapter MeshPrimitive
 adaptMeshPrimitive Mesh.MeshPrimitive{..} = do
   gltf <- getGltf
   buffers' <- getBuffers
+  targets' <- V.mapM adaptMorphTarget (fromMaybe mempty targets)
 
   return $ MeshPrimitive
     { meshPrimitiveIndices = maybe mempty (vertexIndices gltf buffers') indices,
@@ -298,7 +302,8 @@ adaptMeshPrimitive Mesh.MeshPrimitive{..} = do
       meshPrimitivePositions = maybe mempty (vertexPositions gltf buffers') positions,
       meshPrimitiveTexCoords = maybe mempty (vertexTexCoords gltf buffers') texCoords,
       meshPrimitiveJoints = maybe mempty (vertexJoints gltf buffers') joints,
-      meshPrimitiveWeights = maybe mempty (vertexWeights gltf buffers') weights
+      meshPrimitiveWeights = maybe mempty (vertexWeights gltf buffers') weights,
+      meshPrimitiveTargets = targets'
     }
     where positions = attributes HashMap.!? attributePosition
           normals = attributes HashMap.!? attributeNormal
@@ -306,6 +311,23 @@ adaptMeshPrimitive Mesh.MeshPrimitive{..} = do
           joints = attributes HashMap.!? attributeJoints
           weights = attributes HashMap.!? attributeWeights
 
+adaptMorphTarget :: HashMap Text AccessorIx -> Adapter MorphTarget
+adaptMorphTarget attributes = do
+  gltf <- getGltf
+  buffers' <- getBuffers
+
+  return $ MorphTarget
+    { morphTargetNormals = maybe mempty (vertexNormals gltf buffers') normals,
+      morphTargetPositions = maybe mempty (vertexPositions gltf buffers') positions,
+      morphTargetTexCoords = maybe mempty (vertexTexCoords gltf buffers') texCoords,
+      morphTargetJoints = maybe mempty (vertexJoints gltf buffers') joints,
+      morphTargetWeights = maybe mempty (vertexWeights gltf buffers') weights
+    }
+    where positions = attributes HashMap.!? attributePosition
+          normals = attributes HashMap.!? attributeNormal
+          texCoords = attributes HashMap.!? attributeTexCoord
+          joints = attributes HashMap.!? attributeJoints
+          weights = attributes HashMap.!? attributeWeights
 
 adaptMeshPrimitiveMode :: Mesh.MeshPrimitiveMode -> MeshPrimitiveMode
 adaptMeshPrimitiveMode = toEnum . Mesh.unMeshPrimitiveMode

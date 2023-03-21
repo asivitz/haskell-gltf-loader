@@ -143,6 +143,7 @@ reportMeshSummary mesh = do
   logInfo $ "      Unique Vertices: " <> display (length vertices)
   logInfo $ "      Total Vertices: " <> display (length indices)
   logInfo $ "      Attributes: " <> displayInlineList attrs
+  logInfo $ "      Morph Targets: " <> displayInlineList (mesh ^.. _meshTargetNames . each)
 
 reportMaterial :: Material -> RIO App ()
 reportMaterial material = do

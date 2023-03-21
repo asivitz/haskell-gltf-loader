@@ -13,6 +13,7 @@ module Text.GLTF.Loader.Gltf
     MeshPrimitive(..),
     MeshPrimitiveMode(..),
     MinFilter(..),
+    MorphTarget(..),
     Node(..),
     PbrMetallicRoughness(..),
     Sampler(..),
@@ -51,6 +52,7 @@ module Text.GLTF.Loader.Gltf
     _meshPrimitives,
     _meshWeights,
     _meshName,
+    _meshTargetNames,
     -- ** Node Lenses
     _nodeChildren,
     _nodeMeshId,
@@ -79,6 +81,7 @@ module Text.GLTF.Loader.Gltf
     _meshPrimitivePositions,
     _meshPrimitiveJoints,
     _meshPrimitiveWeights,
+    _meshPrimitiveTargets,
     -- ** PbrMetallicRoughness Lenses
     _pbrBaseColorFactor,
     _pbrBaseColorTexture,
@@ -153,7 +156,9 @@ data Mesh = Mesh
     -- | A Vector of primitives, each defining geometry to be rendered.
     meshPrimitives :: Vector MeshPrimitive,
     -- | A Vector of weights to be applied to the morph targets.
-    meshWeights :: Vector Float
+    meshWeights :: Vector Float,
+    -- | A vector of names of available morph targets
+    meshTargetNames :: Vector Text
   } deriving (Eq, Show)
 
 -- | A node in the node hierarchy
@@ -217,7 +222,19 @@ data MeshPrimitive = MeshPrimitive
     -- | A Vector of vertex joint indices (for skinning).
     meshPrimitiveJoints :: Vector (V4 Word8),
     -- | A Vector of vertex joint weights (for skinning).
-    meshPrimitiveWeights :: Vector (V4 Float)
+    meshPrimitiveWeights :: Vector (V4 Float),
+    -- | A Vector of morph targets
+    meshPrimitiveTargets :: Vector MorphTarget
+  } deriving (Eq, Show)
+
+-- | Differences in attributes from the original mesh.
+-- Multiply by some factor and add to the original mesh to morph.
+data MorphTarget = MorphTarget
+  { morphTargetPositions :: Vector (V3 Float),
+    morphTargetNormals :: Vector (V3 Float),
+    morphTargetTexCoords :: Vector (V2 Float),
+    morphTargetJoints :: Vector (V4 Word8),
+    morphTargetWeights :: Vector (V4 Float)
   } deriving (Eq, Show)
 
 -- | Alpha rendering mode of a material
@@ -433,6 +450,10 @@ _meshPrimitives = lens
 _meshWeights :: Lens' Mesh (Vector Float)
 _meshWeights = lens meshWeights (\mesh weights -> mesh { meshWeights = weights })
 
+-- | A Vector of names of morph targets for the mesh.
+_meshTargetNames :: Lens' Mesh (Vector Text)
+_meshTargetNames = lens meshTargetNames (\mesh names -> mesh { meshTargetNames = names })
+
 -- | The indices of this node's children.
 _nodeChildren :: Lens' Node (Vector Int)
 _nodeChildren = lens nodeChildren (\node children -> node { nodeChildren = children })
@@ -560,6 +581,12 @@ _meshPrimitiveWeights :: Lens' MeshPrimitive (Vector (V4 Float))
 _meshPrimitiveWeights = lens
   meshPrimitiveWeights
   (\primitive' weights -> primitive' { meshPrimitiveWeights = weights })
+
+-- | A Vector of morph targets for the mesh primitive.
+_meshPrimitiveTargets :: Lens' MeshPrimitive (Vector MorphTarget)
+_meshPrimitiveTargets = lens
+  meshPrimitiveTargets
+  (\primitive' targets -> primitive' { meshPrimitiveTargets = targets })
 
 -- | The factors for the base color of the material.
 _pbrBaseColorFactor :: Lens' PbrMetallicRoughness (V4 Float)

@@ -22,6 +22,7 @@ dependencies:
   - linear
   - microlens
   - microlens-platform
+  - microlens-aeson
 
 ghc-options:
   - -Wall

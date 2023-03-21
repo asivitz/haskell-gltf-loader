@@ -92,6 +92,7 @@ library
     , gltf-codec
     , linear
     , microlens
+    , microlens-aeson
     , microlens-platform
     , rio >=0.1.12.0
     , unordered-containers
@@ -151,6 +152,7 @@ executable gltf-loader
     , gltf-loader
     , linear
     , microlens
+    , microlens-aeson
     , microlens-platform
     , optparse-simple
     , rio >=0.1.12.0
@@ -217,6 +219,7 @@ test-suite gltf-loader-test
     , hspec
     , linear
     , microlens
+    , microlens-aeson
     , microlens-platform
     , rio >=0.1.12.0
     , unordered-containers
