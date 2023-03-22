@@ -113,7 +113,7 @@ allNamedAnimationJointMatrices gltf skinId frameTime = Map.fromList . Vector.toL
 animationJointMatrices :: Gltf -> Int -> Float -> Animation -> Maybe (Vector (Vector (M44 Float)))
 animationJointMatrices Gltf {..} skinId frameTime Animation {..} = do
   let animationLength = Vector.foldl' max 0 . Vector.map (Vector.foldl' max 0 . channelInput) $ animationChannels
-      frames :: Int = floor (animationLength / frameTime)
+      frames :: Int = round (animationLength / frameTime)
 
   Skin {..} <- gltfSkins Vector.!? skinId
 
@@ -124,12 +124,12 @@ animationJointMatrices Gltf {..} skinId frameTime Animation {..} = do
   where
   resolveChannel :: Float -> Channel -> NodeTransform
   resolveChannel currentTime Channel {..} = case channelOutput of
-    TranslationOutput v -> NodeTransform (interp (\a b x -> lerp x a b) v) Nothing Nothing
+    TranslationOutput v -> NodeTransform (interp (\a b x -> lerp x b a) v) Nothing Nothing
     RotationOutput v -> NodeTransform Nothing (interp slerp v) Nothing
     ScaleOutput v -> NodeTransform Nothing Nothing (interp (\a b x -> lerp x a b) v)
     where
     toIdx = Vector.findIndex (> currentTime) channelInput
-    fromIdx = maybe (Just $ Vector.length channelInput) (\x -> if x > 0 then Just (x - 1) else Nothing) toIdx
+    fromIdx = maybe (Just $ Vector.length channelInput - 1) (\x -> if x > 0 then Just (x - 1) else Nothing) toIdx
     interp :: (a -> a -> Float -> a) -> Vector a -> Maybe a
     interp f v = case (fromIdx, toIdx) of
       (Just i, Nothing) -> v Vector.!? i
