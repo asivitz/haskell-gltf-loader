@@ -312,16 +312,25 @@ data Skin = Skin
 
 data Animation = Animation
   { animationName :: Maybe Text,
+    -- | Each channel describes how some node is transformed over the course
+  -- of the animation
     animationChannels :: Vector Channel
   } deriving (Eq, Show)
 
+-- | A channel specifies how a node is transformed over the course of an
+-- animation
 data Channel = Channel
-  { channelTargetNode :: Int,
+  { -- | The node affected by the transformation.
+    channelTargetNode :: Int,
     channelInterpolation :: Text,
+    -- | A vector of time indices, placing the corresponding output in the timeline
     channelInput :: Vector Float,
+    -- | Essentially vector of transforms of some kind. Each is associated
+    -- with a timestamp in the input vector.
     channelOutput :: AnimationOutput
   } deriving (Eq, Show)
 
+-- | A vector of transforms of some kind.
 data AnimationOutput
   = TranslationOutput (Vector (V3 Float))
   | RotationOutput (Vector (Quaternion Float))
