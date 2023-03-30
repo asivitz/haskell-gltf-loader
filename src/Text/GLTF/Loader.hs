@@ -112,13 +112,16 @@ allNamedAnimationJointMatrices gltf skinId frameTime = Map.fromList . Vector.toL
 -- back a vector of joint matrices (one for each joint).
 animationJointMatrices :: Gltf -> Int -> Float -> Animation -> Maybe (Vector (Vector (M44 Float)))
 animationJointMatrices Gltf {..} skinId frameTime Animation {..} = do
-  let animationLength = Vector.foldl' max 0 . Vector.map (Vector.foldl' max 0 . channelInput) $ animationChannels
+  someChannelInput <- animationChannels Vector.!? 0 >>= \c -> channelInput c Vector.!? 0
+  let animationStart = Vector.foldl' min someChannelInput . Vector.map (Vector.foldl' min someChannelInput . channelInput) $ animationChannels
+      animationEnd = Vector.foldl' max 0 . Vector.map (Vector.foldl' max 0 . channelInput) $ animationChannels
+      animationLength = animationEnd - animationStart
       frames :: Int = round (animationLength / frameTime)
 
   Skin {..} <- gltfSkins Vector.!? skinId
 
   for [0..frames] $ \frameNumber -> do
-    let animatedTargets = Map.fromListWith prioritizeNodeTransform . Vector.toList $ (\channel -> (channelTargetNode channel, resolveChannel (frameTime * realToFrac frameNumber) channel)) <$> animationChannels
+    let animatedTargets = Map.fromListWith prioritizeNodeTransform . Vector.toList $ (\channel -> (channelTargetNode channel, resolveChannel (animationStart + frameTime * realToFrac frameNumber) channel)) <$> animationChannels
     Vector.mapM (jointMatrixForJoint animatedTargets) (Vector.zip skinJoints skinInverseBindMatrices)
 
   where
