@@ -128,6 +128,7 @@ reportMeshSummary mesh = do
   let primitives' = mesh ^. _meshPrimitives
       vertices = Vector.concatMap (^. _meshPrimitivePositions) primitives'
       normals = has (each . _meshPrimitiveNormals) primitives'
+      tangents = has (each . _meshPrimitiveTangents) primitives'
       texCoords = has (each . _meshPrimitiveTexCoords) primitives'
       joints = has (each . _meshPrimitiveJoints) primitives'
       weights = has (each . _meshPrimitiveWeights) primitives'
@@ -135,6 +136,7 @@ reportMeshSummary mesh = do
       attrs :: [Text] = catMaybes
         [ Just "Positions"
         , if normals then Just "Normals" else Nothing
+        , if tangents then Just "Tangents" else Nothing
         , if texCoords then Just "TexCoords" else Nothing
         , if joints then Just "Joints" else Nothing
         , if weights then Just "Weights" else Nothing

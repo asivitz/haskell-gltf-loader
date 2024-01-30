@@ -77,6 +77,7 @@ module Text.GLTF.Loader.Gltf
     _meshPrimitiveIndices,
     _meshPrimitiveMode,
     _meshPrimitiveNormals,
+    _meshPrimitiveTangents,
     _meshPrimitiveTexCoords,
     _meshPrimitivePositions,
     _meshPrimitiveJoints,
@@ -215,6 +216,8 @@ data MeshPrimitive = MeshPrimitive
     meshPrimitiveMode :: MeshPrimitiveMode,
     -- | A Vector of vertex normals.
     meshPrimitiveNormals :: Vector (V3 Float),
+    -- | A Vector of vertex tangents.
+    meshPrimitiveTangents :: Vector (V4 Float),
     -- | A Vector of vertex positions.
     meshPrimitivePositions :: Vector (V3 Float),
     -- | A Vector of vertex texture coordinates
@@ -232,6 +235,7 @@ data MeshPrimitive = MeshPrimitive
 data MorphTarget = MorphTarget
   { morphTargetPositions :: Vector (V3 Float),
     morphTargetNormals :: Vector (V3 Float),
+    morphTargetTangents :: Vector (V4 Float),
     morphTargetTexCoords :: Vector (V2 Float),
     morphTargetJoints :: Vector (V4 Word8),
     morphTargetWeights :: Vector (V4 Float)
@@ -566,6 +570,12 @@ _meshPrimitiveNormals :: Lens' MeshPrimitive (Vector (V3 Float))
 _meshPrimitiveNormals = lens
   meshPrimitiveNormals
   (\primitive' normals -> primitive' { meshPrimitiveNormals = normals })
+
+-- | A Vector of vertex tangents.
+_meshPrimitiveTangents :: Lens' MeshPrimitive (Vector (V4 Float))
+_meshPrimitiveTangents = lens
+  meshPrimitiveTangents
+  (\primitive' tangents -> primitive' { meshPrimitiveTangents = tangents })
 
 -- | A Vector of vertex positions.
 _meshPrimitivePositions :: Lens' MeshPrimitive (Vector (V3 Float))

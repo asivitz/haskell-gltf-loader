@@ -2,6 +2,7 @@
 module Text.GLTF.Loader.Internal.Adapter
   ( attributePosition,
     attributeNormal,
+    attributeTangent,
     attributeTexCoord,
     runAdapter,
     adaptGltf,
@@ -62,6 +63,9 @@ attributeJoints = "JOINTS_0"
 
 attributeWeights :: Text
 attributeWeights = "WEIGHTS_0"
+
+attributeTangent :: Text
+attributeTangent = "TANGENT"
 
 runAdapter
   :: GlTF.GlTF
@@ -299,6 +303,7 @@ adaptMeshPrimitive Mesh.MeshPrimitive{..} = do
       meshPrimitiveMaterial = Material.unMaterialIx <$> material,
       meshPrimitiveMode = adaptMeshPrimitiveMode mode,
       meshPrimitiveNormals = maybe mempty (vertexNormals gltf buffers') normals,
+      meshPrimitiveTangents = maybe mempty (vertexTangents gltf buffers') tangents,
       meshPrimitivePositions = maybe mempty (vertexPositions gltf buffers') positions,
       meshPrimitiveTexCoords = maybe mempty (vertexTexCoords gltf buffers') texCoords,
       meshPrimitiveJoints = maybe mempty (vertexJoints gltf buffers') joints,
@@ -307,6 +312,7 @@ adaptMeshPrimitive Mesh.MeshPrimitive{..} = do
     }
     where positions = attributes HashMap.!? attributePosition
           normals = attributes HashMap.!? attributeNormal
+          tangents = attributes HashMap.!? attributeTangent
           texCoords = attributes HashMap.!? attributeTexCoord
           joints = attributes HashMap.!? attributeJoints
           weights = attributes HashMap.!? attributeWeights
@@ -318,6 +324,7 @@ adaptMorphTarget attributes = do
 
   return $ MorphTarget
     { morphTargetNormals = maybe mempty (vertexNormals gltf buffers') normals,
+      morphTargetTangents = maybe mempty (vertexTangents gltf buffers') tangents,
       morphTargetPositions = maybe mempty (vertexPositions gltf buffers') positions,
       morphTargetTexCoords = maybe mempty (vertexTexCoords gltf buffers') texCoords,
       morphTargetJoints = maybe mempty (vertexJoints gltf buffers') joints,
@@ -325,6 +332,7 @@ adaptMorphTarget attributes = do
     }
     where positions = attributes HashMap.!? attributePosition
           normals = attributes HashMap.!? attributeNormal
+          tangents = attributes HashMap.!? attributeTangent
           texCoords = attributes HashMap.!? attributeTexCoord
           joints = attributes HashMap.!? attributeJoints
           weights = attributes HashMap.!? attributeWeights

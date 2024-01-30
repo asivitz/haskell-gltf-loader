@@ -3,6 +3,7 @@ module Text.GLTF.Loader.Internal.Decoders
     getIndices,
     getPositions,
     getNormals,
+    getTangents,
     getTexCoords,
     getJoints,
     getWeights,
@@ -40,6 +41,10 @@ getPositions = getVec3 getFloat
 -- | Vertex normals binary decoder
 getNormals :: Get (Vector (V3 Float))
 getNormals = getVec3 getFloat
+
+-- | Vertex normals binary decoder
+getTangents :: Get (Vector (V4 Float))
+getTangents = getVec4 getFloat
 
 -- | Texture coordinates binary decoder
 getTexCoords :: Get (Vector (V2 Float))
