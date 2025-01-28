@@ -5,15 +5,15 @@
 
 packages:
 - completed:
+    hackage: gltf-codec-0.1.0.5@sha256:685df774608724fd46f359a4e24a4071e01a9b901b41b4f9e6e2daddd20c9af2,2563
     pantry-tree:
-      sha256: 8ea5a6aa2de74c5b6d5b2d17c057421fce81577a0cf1f8f51f2cb4e7e0ecb5be
+      sha256: 2169b1d427fb102c8c1c87150d94b2a785318fd9b2065dae30b493769c5f0552
       size: 1619
-    hackage: gltf-codec-0.1.0.4@sha256:41f3718e93b273ca65fd3072fd02ca59dec1c978a56dc891c62b53821c332326,2633
   original:
-    hackage: gltf-codec-0.1.0.4
+    hackage: gltf-codec-0.1.0.5
 snapshots:
 - completed:
-    sha256: 82e5ccb47b068521de4055034e8aa278eab430b586881d9cc29ba8b382ce3253
-    size: 618952
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/19/15.yaml
-  original: lts-19.15
+    sha256: 2d580e973dc1a5ff70cd2bb1248613f835829b38eed5db5dafc3615a22cb1bcd
+    size: 679292
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/23/5.yaml
+  original: lts-23.5

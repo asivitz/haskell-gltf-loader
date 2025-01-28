@@ -324,7 +324,7 @@ adaptMorphTarget attributes = do
 
   return $ MorphTarget
     { morphTargetNormals = maybe mempty (vertexNormals gltf buffers') normals,
-      morphTargetTangents = maybe mempty (vertexTangents gltf buffers') tangents,
+      morphTargetTangents = maybe mempty (morphTangents gltf buffers') tangents,
       morphTargetPositions = maybe mempty (vertexPositions gltf buffers') positions,
       morphTargetTexCoords = maybe mempty (vertexTexCoords gltf buffers') texCoords,
       morphTargetJoints = maybe mempty (vertexJoints gltf buffers') joints,

@@ -44,7 +44,7 @@ fromJsonFile path = liftIO (GlTF.fromFile path) >>= toGltfResult (takeDirectory 
 
 fromBinaryFile :: MonadUnliftIO io => FilePath -> io (Either Errors Glb)
 fromBinaryFile path = liftIO (GLB.fromFile path) >>= toGlbResult "."
-  
+
 fromBinaryByteString :: MonadUnliftIO io => ByteString -> io (Either Errors Glb)
 fromBinaryByteString input = toGlbResult "." (GLB.fromByteString input)
 
@@ -89,6 +89,11 @@ data NodeTransform = NodeTransform
   , nodeScale :: Maybe (V3 Float)
   }
 
+instance Semigroup NodeTransform where
+  (NodeTransform t1 r1 s1) <> (NodeTransform t2 r2 s2) = NodeTransform (t1 <|> t2) (r1 <|> r2) (s1 <|> s2)
+instance Monoid NodeTransform where
+  mempty = NodeTransform Nothing Nothing Nothing
+
 nodeTransformMatrix ::  NodeTransform -> M44 Float
 nodeTransformMatrix NodeTransform {..} =
   tMat !*! rMat !*! sMat
@@ -97,11 +102,6 @@ nodeTransformMatrix NodeTransform {..} =
   rMat = extendm33 $ maybe identity fromQuaternion nodeRotation
   sMat = extendm33 $ maybe identity scaled nodeScale
   extendm33 m = identity & _m33 .~ m
-
-prioritizeNodeTransform :: NodeTransform -> NodeTransform -> NodeTransform
-prioritizeNodeTransform (NodeTransform t1 r1 s1) (NodeTransform t2 r2 s2) =
-  NodeTransform (t1 <|> t2) (r1 <|> r2) (s1 <|> s2)
-
 
 allNamedAnimationJointMatrices :: Gltf -> Int -> Float -> Map.Map Text (Vector (Vector (M44 Float)))
 allNamedAnimationJointMatrices gltf skinId frameTime = Map.fromList . Vector.toList
@@ -119,10 +119,14 @@ animationJointMatrices Gltf {..} skinId frameTime Animation {..} = do
       frames :: Int = round (animationLength / frameTime)
 
   Skin {..} <- gltfSkins Vector.!? skinId
+  let jointInverseBinds = Vector.zip skinJoints skinInverseBindMatrices
 
   for [0..frames] $ \frameNumber -> do
-    let animatedTargets = Map.fromListWith prioritizeNodeTransform . Vector.toList $ (\channel -> (channelTargetNode channel, resolveChannel (animationStart + frameTime * realToFrac frameNumber) channel)) <$> animationChannels
-    Vector.mapM (jointMatrixForJoint animatedTargets) (Vector.zip skinJoints skinInverseBindMatrices)
+    let animatedTargets = Map.fromListWith (<>)
+                        . Vector.toList
+                        $ (\channel -> (channelTargetNode channel, resolveChannel (animationStart + frameTime * realToFrac frameNumber) channel))
+                        <$> animationChannels
+    Vector.mapM (jointMatrixForJoint animatedTargets) jointInverseBinds
 
   where
   resolveChannel :: Float -> Channel -> NodeTransform
@@ -145,6 +149,8 @@ animationJointMatrices Gltf {..} skinId frameTime Animation {..} = do
         return $ f v1 v2 ((currentTime - t1) / (t2 - t1))
       (Nothing, Nothing) -> Nothing
 
+  -- This global transform is basically a walk from the origin out to the bone
+  -- so we need to visit each parent successively
   globalTransformForNode :: Map.Map Int NodeTransform -> Int -> Maybe (M44 Float)
   globalTransformForNode animatedTargets i = do
     let parentXForm = fromMaybe identity $ do
@@ -152,8 +158,7 @@ animationJointMatrices Gltf {..} skinId frameTime Animation {..} = do
           globalTransformForNode animatedTargets par
     Node {..} <- gltfNodes Vector.!? i
     let defaultNodeTransform = NodeTransform nodeTranslation (v4toQuat <$> nodeRotation) nodeScale
-        emptyNodeTransform = NodeTransform Nothing Nothing Nothing
-        nodeTransform = prioritizeNodeTransform (fromMaybe emptyNodeTransform (Map.lookup i animatedTargets)) defaultNodeTransform
+        nodeTransform = (fromMaybe mempty (Map.lookup i animatedTargets)) <> defaultNodeTransform
         v4toQuat (V4 x y z w) = Quaternion w (V3 x y z)
     return $ parentXForm !*! nodeTransformMatrix nodeTransform
 
@@ -163,6 +168,10 @@ animationJointMatrices Gltf {..} skinId frameTime Animation {..} = do
             . Vector.mapMaybe (\(i,_) -> (i,) <$> Vector.findIndex (\node -> i `Vector.elem` nodeChildren node) gltfNodes)
             $ Vector.indexed gltfNodes
 
+  -- The inverse bind matrix will take us to a space where the bone is aligned with the origin
+  -- From there we can perform the transform for this bone for this frame of animation
+  -- _and_ we'll do this for the bone's parents all the way up to the root, which will take us back
+  -- to the full model position
   jointMatrixForJoint :: Map.Map Int NodeTransform -> (Int, M44 Float) -> Maybe (M44 Float)
   jointMatrixForJoint animatedTargets (j, invBindMat) = do
     globalXForm <- globalTransformForNode animatedTargets j

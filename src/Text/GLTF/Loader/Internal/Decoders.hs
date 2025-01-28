@@ -4,6 +4,7 @@ module Text.GLTF.Loader.Internal.Decoders
     getPositions,
     getNormals,
     getTangents,
+    getMorphTangents,
     getTexCoords,
     getJoints,
     getWeights,
@@ -42,9 +43,16 @@ getPositions = getVec3 getFloat
 getNormals :: Get (Vector (V3 Float))
 getNormals = getVec3 getFloat
 
--- | Vertex normals binary decoder
+-- | Vertex tangents binary decoder
 getTangents :: Get (Vector (V4 Float))
 getTangents = getVec4 getFloat
+
+-- | Morph tangents binary decoder
+--
+-- Although the mesh tangents have a w component that indicates the
+-- handedness of the tangent, the morph displacements do not.
+getMorphTangents :: Get (Vector (V3 Float))
+getMorphTangents = getVec3 getFloat
 
 -- | Texture coordinates binary decoder
 getTexCoords :: Get (Vector (V2 Float))
@@ -93,7 +101,7 @@ getMat3 getter = getVector $ do
   m1_1 <- getter
   m1_2 <- getter
   m1_3 <- getter
-  
+
   m2_1 <- getter
   m2_2 <- getter
   m2_3 <- getter
@@ -114,7 +122,7 @@ getMat4 getter = getVector $ do
   m1_2 <- getter
   m1_3 <- getter
   m1_4 <- getter
-  
+
   m2_1 <- getter
   m2_2 <- getter
   m2_3 <- getter

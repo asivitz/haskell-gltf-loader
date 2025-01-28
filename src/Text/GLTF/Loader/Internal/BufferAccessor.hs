@@ -9,6 +9,7 @@ module Text.GLTF.Loader.Internal.BufferAccessor
     vertexPositions,
     vertexNormals,
     vertexTangents,
+    morphTangents,
     vertexTexCoords,
     vertexJoints,
     vertexWeights,
@@ -66,13 +67,13 @@ loadBuffers
 loadBuffers GlTF{buffers=buffers} chunk basePath = do
   let buffers' = fromMaybe [] buffers
       iforM = flip Vector.imapM
-  
+
   iforM buffers' $ \idx Buffer{..} -> do
     -- If the first buffer does not have a URI defined, it refers to a GLB chunk
     let fallback = if idx == 0 && isNothing uri
           then maybe mempty chunkData chunk
           else mempty
-    
+
     uri' <- maybe (pure fallback) (loadUri' basePath) uri
     return $ GltfBuffer uri'
 
@@ -103,6 +104,10 @@ vertexNormals = readBufferWithGet getNormals
 -- | Decode vertex tangents
 vertexTangents :: GlTF -> Vector GltfBuffer -> AccessorIx -> Vector (V4 Float)
 vertexTangents = readBufferWithGet getTangents
+
+-- | Decode morph tangents
+morphTangents :: GlTF -> Vector GltfBuffer -> AccessorIx -> Vector (V3 Float)
+morphTangents = readBufferWithGet getMorphTangents
 
 -- | Decode texture coordinates. Note that we only use the first one.
 vertexTexCoords :: GlTF -> Vector GltfBuffer -> AccessorIx -> Vector (V2 Float)

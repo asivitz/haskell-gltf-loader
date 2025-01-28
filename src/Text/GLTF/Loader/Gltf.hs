@@ -235,7 +235,7 @@ data MeshPrimitive = MeshPrimitive
 data MorphTarget = MorphTarget
   { morphTargetPositions :: Vector (V3 Float),
     morphTargetNormals :: Vector (V3 Float),
-    morphTargetTangents :: Vector (V4 Float),
+    morphTargetTangents :: Vector (V3 Float),
     morphTargetTexCoords :: Vector (V2 Float),
     morphTargetJoints :: Vector (V4 Word8),
     morphTargetWeights :: Vector (V4 Float)
@@ -279,7 +279,7 @@ data MinFilter
   | MinLinearMipmapLinear
   deriving (Enum, Eq, Show)
 
--- | Sampler wrapping mode.  
+-- | Sampler wrapping mode.
 data SamplerWrap
   = ClampToEdge
   | MirroredRepeat

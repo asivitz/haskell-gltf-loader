@@ -46,7 +46,7 @@ reportVerbose gltf = do
 reportSummary :: Gltf -> RIO App ()
 reportSummary gltf = do
   reportAsset $ gltf ^. _asset
-  
+
   logInfo "" -- Blank line
 
   reportNodes gltf reportMeshSummary
@@ -54,7 +54,7 @@ reportSummary gltf = do
 reportGltf :: Gltf -> RIO App ()
 reportGltf gltf = do
   reportAsset $ gltf ^. _asset
-  
+
   logInfo "" -- Blank line
 
   reportNodes gltf $ reportMesh gltf
@@ -90,7 +90,7 @@ reportMeshVerbose gltf mesh = do
   forM_ (mesh ^. _meshPrimitives) $ \primitive' -> do
     -- Report Vertices
     logInfo "      Vertices:"
-    
+
     let positions = primitive' ^. _meshPrimitivePositions
     forM_ (primitive' ^. _meshPrimitiveIndices) $ \index -> do
       forM_ (positions Vector.!? fromIntegral index) $ \position -> do

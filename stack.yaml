@@ -1,10 +1,12 @@
-resolver: lts-19.15
+resolver: lts-23.5
 
 packages:
   - .
 
 extra-deps:
-  - gltf-codec-0.1.0.4
+  - gltf-codec-0.1.0.5
 
 nix:
   packages: [zlib]
+
+allow-newer: true
